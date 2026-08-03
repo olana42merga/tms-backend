@@ -9,6 +9,8 @@ import com.taskmanagement.enums.Priority;
 import com.taskmanagement.enums.TaskStatus;
 import com.taskmanagement.exception.ResourceNotFoundException;
 import com.taskmanagement.repository.TaskRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,25 +19,22 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class TaskService {
 
     private final TaskRepository taskRepository;
     private final UserService userService;
+    private final EmailService emailService; // ✅ Add EmailService
 
-    public TaskService(TaskRepository taskRepository, UserService userService) {
-        this.taskRepository = taskRepository;
-        this.userService = userService;
-    }
-
-    // ✅ ADD THIS METHOD
     public List<Task> getAllTasks() {
-        System.out.println("📋 Getting all tasks");
+        log.info("📋 Getting all tasks");
         return taskRepository.findAll();
     }
 
     @Transactional
     public Task createTask(TaskRequest request, Long createdBy) {
-        System.out.println("Creating task: " + request.getTitle());
+        log.info("📝 Creating task: {}", request.getTitle());
 
         User creator = userService.findById(createdBy);
         User assignedTo = request.getAssignedTo() != null ? userService.findById(request.getAssignedTo()) : null;
@@ -54,7 +53,36 @@ public class TaskService {
         task.setCreatedBy(creator);
         task.setProgress(0);
 
-        return taskRepository.save(task);
+        Task savedTask = taskRepository.save(task);
+        log.info("✅ Task created with ID: {}", savedTask.getId());
+
+        // ✅ Send email notification to assigned user
+        if (assignedTo != null) {
+            sendTaskAssignedEmail(savedTask, assignedTo);
+        }
+
+        return savedTask;
+    }
+
+    // ✅ Send email when task is assigned
+    private void sendTaskAssignedEmail(Task task, User assignedTo) {
+        try {
+            String subject = "Task Assigned: " + task.getTitle();
+            String body = "Hello " + assignedTo.getName() + ",\n\n" +
+                    "A new task has been assigned to you:\n" +
+                    "📋 Title: " + task.getTitle() + "\n" +
+                    "📝 Description: " + (task.getDescription() != null ? task.getDescription() : "No description")
+                    + "\n" +
+                    "🎯 Priority: " + task.getPriority() + "\n" +
+                    "📅 Deadline: " + (task.getDeadline() != null ? task.getDeadline() : "Not set") + "\n\n" +
+                    "Please login to view more details.\n\n" +
+                    "Best regards,\nTMS Team";
+
+            emailService.sendEmail(assignedTo.getEmail(), subject, body);
+            log.info("✅ Task assignment email sent to: {}", assignedTo.getEmail());
+        } catch (Exception e) {
+            log.error("❌ Failed to send task assignment email: {}", e.getMessage());
+        }
     }
 
     public List<Task> getTasksForUser(Long userId) {
@@ -92,7 +120,8 @@ public class TaskService {
         task.setDeadline(request.getDeadline());
 
         if (request.getAssignedTo() != null) {
-            task.setAssignedTo(userService.findById(request.getAssignedTo()));
+            User newAssignedTo = userService.findById(request.getAssignedTo());
+            task.setAssignedTo(newAssignedTo);
         }
 
         return taskRepository.save(task);
@@ -101,8 +130,35 @@ public class TaskService {
     @Transactional
     public Task updateTaskStatus(Long id, String status) {
         Task task = getTaskById(id);
+        TaskStatus oldStatus = task.getStatus();
         task.setStatus(TaskStatus.valueOf(status.toUpperCase()));
-        return taskRepository.save(task);
+        Task updatedTask = taskRepository.save(task);
+
+        // ✅ Send email notification on status change
+        if (task.getAssignedTo() != null && oldStatus != task.getStatus()) {
+            sendTaskStatusUpdateEmail(updatedTask);
+        }
+
+        return updatedTask;
+    }
+
+    // ✅ Send email when task status changes
+    private void sendTaskStatusUpdateEmail(Task task) {
+        try {
+            if (task.getAssignedTo() != null) {
+                String subject = "Task Status Updated: " + task.getTitle();
+                String body = "Hello " + task.getAssignedTo().getName() + ",\n\n" +
+                        "Task status has been updated:\n" +
+                        "📋 Title: " + task.getTitle() + "\n" +
+                        "📊 New Status: " + task.getStatus() + "\n\n" +
+                        "Best regards,\nTMS Team";
+
+                emailService.sendEmail(task.getAssignedTo().getEmail(), subject, body);
+                log.info("✅ Task status update email sent to: {}", task.getAssignedTo().getEmail());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send task status update email: {}", e.getMessage());
+        }
     }
 
     @Transactional
@@ -119,7 +175,7 @@ public class TaskService {
     public void deleteTask(Long id) {
         Task task = getTaskById(id);
         taskRepository.delete(task);
-        System.out.println("Task deleted: " + task.getTitle());
+        log.info("🗑️ Task deleted: {}", task.getTitle());
     }
 
     public List<Task> getOverdueTasks() {

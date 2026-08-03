@@ -24,8 +24,8 @@ public class SubTaskService {
     private final SubTaskRepository subTaskRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService; // ✅ Add EmailService
 
-    // ✅ FIXED: Accept createdBy parameter
     @Transactional
     public SubTask createSubTask(SubTaskRequest request, Long createdBy) {
         log.info("📝 Creating sub-task: {}", request.getTitle());
@@ -39,7 +39,6 @@ public class SubTaskService {
                     .orElseThrow(() -> new RuntimeException("User not found: " + request.getAssignedTo()));
         }
 
-        // ✅ Get the creator (logged-in worker)
         User creator = userRepository.findById(createdBy)
                 .orElseThrow(() -> new RuntimeException("User not found: " + createdBy));
 
@@ -72,7 +71,35 @@ public class SubTaskService {
 
         subTask.setDeadline(request.getDeadline());
 
-        return subTaskRepository.save(subTask);
+        SubTask savedSubTask = subTaskRepository.save(subTask);
+        log.info("✅ SubTask created with ID: {}", savedSubTask.getId());
+
+        // ✅ Send email notification
+        if (assignedTo != null) {
+            sendSubTaskCreatedEmail(savedSubTask, assignedTo);
+        }
+
+        return savedSubTask;
+    }
+
+    // ✅ Send email when subtask is created
+    private void sendSubTaskCreatedEmail(SubTask subTask, User assignedTo) {
+        try {
+            String subject = "SubTask Created: " + subTask.getTitle();
+            String body = "Hello " + assignedTo.getName() + ",\n\n" +
+                    "A new subtask has been created for you:\n" +
+                    "📋 Title: " + subTask.getTitle() + "\n" +
+                    "📝 Description: "
+                    + (subTask.getDescription() != null ? subTask.getDescription() : "No description") + "\n" +
+                    "🎯 Priority: " + subTask.getPriority() + "\n" +
+                    "📅 Deadline: " + (subTask.getDeadline() != null ? subTask.getDeadline() : "Not set") + "\n\n" +
+                    "Best regards,\nTMS Team";
+
+            emailService.sendEmail(assignedTo.getEmail(), subject, body);
+            log.info("✅ SubTask creation email sent to: {}", assignedTo.getEmail());
+        } catch (Exception e) {
+            log.error("❌ Failed to send subtask creation email: {}", e.getMessage());
+        }
     }
 
     public List<SubTask> getAllSubTasks() {
@@ -144,7 +171,34 @@ public class SubTaskService {
         } catch (IllegalArgumentException e) {
             throw new RuntimeException("Invalid status: " + status);
         }
-        return subTaskRepository.save(subTask);
+        SubTask updatedSubTask = subTaskRepository.save(subTask);
+
+        // ✅ Send email when subtask is completed
+        if (subTask.getStatus() == TaskStatus.COMPLETED && subTask.getAssignedTo() != null) {
+            sendSubTaskCompletedEmail(updatedSubTask);
+        }
+
+        return updatedSubTask;
+    }
+
+    // ✅ Send email when subtask is completed
+    private void sendSubTaskCompletedEmail(SubTask subTask) {
+        try {
+            if (subTask.getAssignedTo() != null) {
+                String subject = "SubTask Completed: " + subTask.getTitle();
+                String body = "Hello " + subTask.getAssignedTo().getName() + ",\n\n" +
+                        "A subtask has been completed:\n" +
+                        "📋 Title: " + subTask.getTitle() + "\n" +
+                        "📝 Description: "
+                        + (subTask.getDescription() != null ? subTask.getDescription() : "No description") + "\n\n" +
+                        "Best regards,\nTMS Team";
+
+                emailService.sendEmail(subTask.getAssignedTo().getEmail(), subject, body);
+                log.info("✅ SubTask completion email sent to: {}", subTask.getAssignedTo().getEmail());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send subtask completion email: {}", e.getMessage());
+        }
     }
 
     @Transactional

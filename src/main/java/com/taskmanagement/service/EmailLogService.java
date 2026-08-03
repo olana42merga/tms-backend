@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +27,7 @@ public class EmailLogService {
 
         EmailLog emailLog = new EmailLog();
         emailLog.setRecipient(request.getRecipient());
+        emailLog.setRecipientEmail(request.getRecipient());
         emailLog.setSubject(request.getSubject());
         emailLog.setBody(request.getBody());
         emailLog.setStatus(request.getStatus() != null ? request.getStatus() : "PENDING");
@@ -35,12 +37,16 @@ public class EmailLogService {
             emailLog.setSentAt(LocalDateTime.now());
         }
 
-        return emailLogRepository.save(emailLog);
+        EmailLog saved = emailLogRepository.save(emailLog);
+        log.info("✅ Email log saved with ID: {}", saved.getId());
+        return saved;
     }
 
     public List<EmailLog> getAllEmailLogs() {
         log.info("📋 Getting all email logs");
-        return emailLogRepository.findAll();
+        List<EmailLog> logs = emailLogRepository.findAll();
+        log.info("📋 Found {} email logs", logs.size());
+        return logs;
     }
 
     public EmailLog getEmailLogById(Long id) {
@@ -50,26 +56,37 @@ public class EmailLogService {
 
     public List<EmailLog> getEmailLogsByRecipient(String recipient) {
         log.info("📋 Getting email logs for recipient: {}", recipient);
-        return emailLogRepository.findByRecipient(recipient);
+        return emailLogRepository.findAll().stream()
+                .filter(log -> recipient.equals(log.getRecipient()))
+                .collect(Collectors.toList());
     }
 
     public List<EmailLog> getEmailLogsByStatus(String status) {
         log.info("📋 Getting email logs with status: {}", status);
-        return emailLogRepository.findByStatus(status);
+        return emailLogRepository.findAll().stream()
+                .filter(log -> status.equals(log.getStatus()))
+                .collect(Collectors.toList());
     }
 
     public List<EmailLog> getEmailLogsByDateRange(LocalDateTime start, LocalDateTime end) {
         log.info("📋 Getting email logs between: {} and {}", start, end);
-        return emailLogRepository.findBySentAtBetween(start, end);
+        return emailLogRepository.findAll().stream()
+                .filter(log -> log.getSentAt() != null &&
+                        log.getSentAt().isAfter(start) &&
+                        log.getSentAt().isBefore(end))
+                .collect(Collectors.toList());
     }
 
     public Map<String, Long> getEmailLogsCount() {
         log.info("📊 Getting email logs count");
+        List<EmailLog> all = emailLogRepository.findAll();
         Map<String, Long> counts = new HashMap<>();
-        counts.put("total", emailLogRepository.count());
-        counts.put("sent", emailLogRepository.countSent());
-        counts.put("failed", emailLogRepository.countFailed());
-        counts.put("pending", emailLogRepository.countPending());
+        counts.put("total", (long) all.size());
+        counts.put("sent", all.stream().filter(e -> "SENT".equals(e.getStatus())).count());
+        counts.put("failed", all.stream().filter(e -> "FAILED".equals(e.getStatus())).count());
+        counts.put("pending", all.stream().filter(e -> "PENDING".equals(e.getStatus())).count());
+        log.info("📊 Counts: Total={}, Sent={}, Failed={}, Pending={}",
+                counts.get("total"), counts.get("sent"), counts.get("failed"), counts.get("pending"));
         return counts;
     }
 
@@ -91,25 +108,5 @@ public class EmailLogService {
     public void deleteEmailLog(Long id) {
         log.info("🗑️ Deleting email log: {}", id);
         emailLogRepository.deleteById(id);
-    }
-
-    @Transactional
-    public EmailLog sendTestEmail(EmailLogRequest request) {
-        log.info("📧 Sending test email to: {}", request.getRecipient());
-
-        // Simulate sending email
-        try {
-            // Here you would integrate with actual email service
-            // For now, just log it
-            log.info("✅ Test email sent to: {}", request.getRecipient());
-
-            request.setStatus("SENT");
-            return createEmailLog(request);
-        } catch (Exception e) {
-            log.error("❌ Failed to send test email: {}", e.getMessage());
-            request.setStatus("FAILED");
-            request.setErrorMessage(e.getMessage());
-            return createEmailLog(request);
-        }
     }
 }

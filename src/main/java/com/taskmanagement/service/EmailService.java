@@ -1,30 +1,60 @@
 package com.taskmanagement.service;
 
+import com.taskmanagement.dto.EmailLogRequest;
+import com.taskmanagement.entity.EmailLog;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class EmailService {
 
+    private final JavaMailSender mailSender;
+    private final EmailLogService emailLogService; // ✅ Inject EmailLogService
+
     public void sendEmail(String to, String subject, String body) {
-        System.out.println("📧 Email would be sent to: " + to + " - Subject: " + subject);
-        System.out.println("📧 Body: " + body);
+        try {
+            log.info("📧 Sending email to: {}", to);
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(body);
+            message.setFrom("obayecha@gmail.com");
+
+            mailSender.send(message);
+            log.info("✅ Email sent successfully to: {}", to);
+
+            // ✅ Save log using EmailLogService
+            saveEmailLog(to, subject, body, "SENT", null);
+
+        } catch (Exception e) {
+            log.error("❌ Failed to send email: {}", e.getMessage());
+            saveEmailLog(to, subject, body, "FAILED", e.getMessage());
+        }
     }
 
-    public void sendTaskAssignmentEmail(String to, String taskTitle, String deadline) {
-        String subject = "📋 New Task Assigned: " + taskTitle;
-        String body = "Hello,\n\nYou have been assigned a new task.\n\nTask: " + taskTitle + "\nDeadline: " + deadline + "\n\nPlease login to view the details.\n\nBest regards,\nTMS System";
-        sendEmail(to, subject, body);
-    }
+    private void saveEmailLog(String recipient, String subject, String body, String status, String error) {
+        try {
+            log.info("📝 Saving email log for recipient: {}", recipient);
 
-    public void sendMeetingScheduledEmail(String to, String meetingTitle, String date, String time) {
-        String subject = "📅 Meeting Scheduled: " + meetingTitle;
-        String body = "Hello,\n\nA meeting has been scheduled.\n\nMeeting: " + meetingTitle + "\nDate: " + date + "\nTime: " + time + "\n\nPlease login to view the details.\n\nBest regards,\nTMS System";
-        sendEmail(to, subject, body);
-    }
+            EmailLogRequest request = new EmailLogRequest();
+            request.setRecipient(recipient);
+            request.setSubject(subject);
+            request.setBody(body);
+            request.setStatus(status);
+            request.setErrorMessage(error);
 
-    public void sendWelcomeEmail(String to, String username, String password) {
-        String subject = "🎉 Welcome to TMS!";
-        String body = "Hello " + username + ",\n\nWelcome to the Task Management System!\n\nYour account has been created.\nUsername: " + username + "\nPassword: " + password + "\n\nPlease login and change your password.\n\nBest regards,\nTMS System";
-        sendEmail(to, subject, body);
+            EmailLog saved = emailLogService.createEmailLog(request);
+            log.info("✅ Email log saved with ID: {}", saved.getId());
+
+        } catch (Exception e) {
+            log.error("❌ Failed to save email log: {}", e.getMessage());
+            e.printStackTrace();
+        }
     }
 }

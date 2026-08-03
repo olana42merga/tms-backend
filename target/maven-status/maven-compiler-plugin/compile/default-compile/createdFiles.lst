@@ -2,6 +2,7 @@ com\taskmanagement\controller\SubTaskController.class
 com\taskmanagement\entity\SubTask.class
 com\taskmanagement\entity\Meeting.class
 com\taskmanagement\entity\Comment$CommentBuilder.class
+com\taskmanagement\controller\EmailLogController.class
 com\taskmanagement\controller\MeetingController.class
 com\taskmanagement\controller\CommentController.class
 com\taskmanagement\dto\RegisterRequest.class
@@ -17,11 +18,15 @@ com\taskmanagement\config\SecurityConfig.class
 com\taskmanagement\repository\NotificationRepository.class
 com\taskmanagement\dto\TaskResponse.class
 com\taskmanagement\service\TaskService.class
+com\taskmanagement\entity\EmailLog.class
+com\taskmanagement\repository\EmailLogRepository.class
 com\taskmanagement\controller\ReportController.class
 com\taskmanagement\entity\User.class
+com\taskmanagement\service\EmailLogService.class
 com\taskmanagement\service\UserService.class
 com\taskmanagement\dto\MeetingRequest.class
 com\taskmanagement\config\DataLoader.class
+com\taskmanagement\controller\TestEmailController.class
 com\taskmanagement\repository\MeetingRepository.class
 com\taskmanagement\dto\TaskRequest.class
 com\taskmanagement\exception\GlobalExceptionHandler.class
@@ -31,7 +36,9 @@ com\taskmanagement\repository\TaskRepository.class
 com\taskmanagement\repository\UserRepository.class
 com\taskmanagement\entity\Report$ReportBuilder.class
 com\taskmanagement\entity\Report.class
+com\taskmanagement\entity\EmailLog$EmailLogBuilder.class
 com\taskmanagement\service\NotificationService.class
+com\taskmanagement\dto\EmailLogRequest.class
 com\taskmanagement\dto\UserResponse$UserResponseBuilder.class
 com\taskmanagement\service\ReportService.class
 com\taskmanagement\dto\TaskResponse$TaskResponseBuilder.class
@@ -41,6 +48,7 @@ com\taskmanagement\entity\Notification.class
 com\taskmanagement\repository\SubTaskRepository.class
 com\taskmanagement\entity\Notification$NotificationBuilder.class
 com\taskmanagement\service\SubTaskService.class
+com\taskmanagement\enums\EmailStatus.class
 com\taskmanagement\controller\UserController.class
 com\taskmanagement\dto\AuthResponse$AuthResponseBuilder.class
 com\taskmanagement\service\EmailService.class

@@ -21,6 +21,7 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService; // ✅ Add EmailService
 
     @Transactional
     public Comment createComment(Long taskId, Long userId, String content) {
@@ -37,7 +38,33 @@ public class CommentService {
         comment.setTask(task);
         comment.setUser(user);
 
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+        log.info("✅ Comment created with ID: {}", savedComment.getId());
+
+        // ✅ Send email notification to task owner
+        sendCommentAddedEmail(task, user, content);
+
+        return savedComment;
+    }
+
+    // ✅ Send email when comment is added
+    private void sendCommentAddedEmail(Task task, User commenter, String content) {
+        try {
+            if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(commenter.getId())) {
+                String subject = "New Comment on Task: " + task.getTitle();
+                String body = "Hello " + task.getAssignedTo().getName() + ",\n\n" +
+                        "A new comment has been added to your task:\n" +
+                        "📋 Task: " + task.getTitle() + "\n" +
+                        "💬 Comment: " + content + "\n" +
+                        "👤 By: " + commenter.getName() + "\n\n" +
+                        "Best regards,\nTMS Team";
+
+                emailService.sendEmail(task.getAssignedTo().getEmail(), subject, body);
+                log.info("✅ Comment notification email sent to: {}", task.getAssignedTo().getEmail());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send comment notification email: {}", e.getMessage());
+        }
     }
 
     public List<Comment> getCommentsByTask(Long taskId) {

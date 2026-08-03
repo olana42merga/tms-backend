@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/email-logs")
+@RequestMapping("/email-logs") // ✅ Removed /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -24,7 +24,6 @@ public class EmailLogController {
 
     private final EmailLogService emailLogService;
 
-    // ✅ Get all email logs (Admin only)
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getAllEmailLogs() {
@@ -37,7 +36,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Get email log by ID (Admin only)
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getEmailLogById(@PathVariable Long id) {
@@ -50,7 +48,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Get email logs by recipient (Admin only)
     @GetMapping("/recipient/{recipient}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getEmailLogsByRecipient(@PathVariable String recipient) {
@@ -63,7 +60,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Get email logs by status (Admin only)
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getEmailLogsByStatus(@PathVariable String status) {
@@ -76,7 +72,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Get email logs by date range (Admin only)
     @GetMapping("/date-range")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getEmailLogsByDateRange(
@@ -91,7 +86,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Get email logs count (Admin only)
     @GetMapping("/count")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getEmailLogsCount() {
@@ -104,21 +98,18 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Send test email (Admin only)
-    @PostMapping("/test")
+    @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<?> sendTestEmail(@RequestBody EmailLogRequest request) {
+    public ResponseEntity<?> createEmailLog(@RequestBody EmailLogRequest request) {
         try {
-            log.info("📧 Sending test email to: {}", request.getRecipient());
-            EmailLog log = emailLogService.sendTestEmail(request);
+            EmailLog log = emailLogService.createEmailLog(request);
             return ResponseEntity.status(HttpStatus.CREATED).body(log);
         } catch (Exception e) {
-            log.error("❌ Error sending test email: {}", e.getMessage());
+            log.error("❌ Error creating email log: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // ✅ Update email log status (Admin only)
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateEmailLogStatus(
@@ -135,7 +126,6 @@ public class EmailLogController {
         }
     }
 
-    // ✅ Delete email log (Admin only)
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteEmailLog(@PathVariable Long id) {

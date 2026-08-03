@@ -5,6 +5,7 @@ C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\Task.j
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\NotificationController.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\User.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\ReportService.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\enums\EmailStatus.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\AuthController.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\repository\CommentRepository.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\UserResponse.java
@@ -35,6 +36,7 @@ C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\Commen
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\EmailLogService.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\EmailService.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\AuthRequest.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\TestEmailController.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\EmailLog.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\enums\Role.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\EmailLogRequest.java

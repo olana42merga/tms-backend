@@ -20,6 +20,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService; // ✅ Inject EmailService for notifications
 
     public User registerUser(RegisterRequest request) {
         log.info("========================================");
@@ -64,7 +65,34 @@ public class UserService {
         User savedUser = userRepository.save(user);
         log.info("✅ User saved with ID: {} and role: {}", savedUser.getId(), savedUser.getRole());
         log.info("========================================");
+
+        // ✅ Send welcome email to the new user
+        sendWelcomeEmail(savedUser, request.getPassword());
+
         return savedUser;
+    }
+
+    // ✅ Send welcome email to new user
+    private void sendWelcomeEmail(User user, String plainPassword) {
+        try {
+            String subject = "Welcome to Task Management System!";
+            String body = "Hello " + user.getName() + ",\n\n" +
+                    "Your account has been created successfully.\n\n" +
+                    "📋 Account Details:\n" +
+                    "   Username: " + user.getUsername() + "\n" +
+                    "   Email: " + user.getEmail() + "\n" +
+                    "   Role: " + user.getRole().name() + "\n" +
+                    "   Password: " + plainPassword + "\n\n" +
+                    "Please login to access the system:\n" +
+                    "   Login URL: http://localhost:3000/login\n\n" +
+                    "Best regards,\n" +
+                    "TMS Team";
+
+            emailService.sendEmail(user.getEmail(), subject, body);
+            log.info("✅ Welcome email sent to: {}", user.getEmail());
+        } catch (Exception e) {
+            log.error("❌ Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
     }
 
     public User findByUsername(String username) {

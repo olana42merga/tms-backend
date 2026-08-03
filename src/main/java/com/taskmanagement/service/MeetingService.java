@@ -5,6 +5,7 @@ import com.taskmanagement.entity.Meeting;
 import com.taskmanagement.entity.User;
 import com.taskmanagement.exception.ResourceNotFoundException;
 import com.taskmanagement.repository.MeetingRepository;
+import com.taskmanagement.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,8 @@ public class MeetingService {
 
     private final MeetingRepository meetingRepository;
     private final UserService userService;
+    private final UserRepository userRepository;
+    private final EmailService emailService; // ✅ Add EmailService
 
     @Transactional
     public Meeting createMeeting(MeetingRequest request, Long createdBy) {
@@ -43,7 +46,44 @@ public class MeetingService {
 
         Meeting savedMeeting = meetingRepository.save(meeting);
         log.info("✅ Meeting created with ID: {}", savedMeeting.getId());
+
+        // ✅ Send email invitations to participants
+        sendMeetingInvitations(savedMeeting);
+
         return savedMeeting;
+    }
+
+    // ✅ Send meeting invitations
+    private void sendMeetingInvitations(Meeting meeting) {
+        try {
+            String[] participantIds = meeting.getParticipants().split(",");
+            for (String id : participantIds) {
+                try {
+                    User participant = userRepository.findById(Long.parseLong(id.trim())).orElse(null);
+                    if (participant != null) {
+                        String subject = "Meeting Invitation: " + meeting.getTitle();
+                        String body = "Hello " + participant.getName() + ",\n\n" +
+                                "You are invited to a meeting:\n" +
+                                "📋 Title: " + meeting.getTitle() + "\n" +
+                                "📅 Date: " + meeting.getMeetingDate() + "\n" +
+                                "🕐 Time: " + meeting.getStartTime() + " - " + meeting.getEndTime() + "\n" +
+                                "📍 Location: "
+                                + (meeting.getLocation() != null ? meeting.getLocation() : "Not specified") + "\n" +
+                                "🔗 Link: "
+                                + (meeting.getMeetingLink() != null ? meeting.getMeetingLink() : "Not provided")
+                                + "\n\n" +
+                                "Best regards,\nTMS Team";
+
+                        emailService.sendEmail(participant.getEmail(), subject, body);
+                        log.info("✅ Meeting invitation email sent to: {}", participant.getEmail());
+                    }
+                } catch (Exception e) {
+                    log.error("❌ Failed to send meeting invitation to ID {}: {}", id, e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send meeting invitations: {}", e.getMessage());
+        }
     }
 
     public List<Meeting> getAllMeetings() {
@@ -53,7 +93,6 @@ public class MeetingService {
 
     public List<Meeting> getMeetingsForUser(Long userId) {
         log.info("📋 Getting meetings for user: {}", userId);
-        // Get meetings where the user is a participant
         return meetingRepository.findByParticipantsContaining(String.valueOf(userId));
     }
 
@@ -89,8 +128,11 @@ public class MeetingService {
             meeting.setLocation(request.getLocation());
         if (request.getMeetingLink() != null)
             meeting.setMeetingLink(request.getMeetingLink());
-        if (request.getParticipants() != null)
+        if (request.getParticipants() != null) {
             meeting.setParticipants(request.getParticipants());
+            // Send updated invitations
+            sendMeetingInvitations(meeting);
+        }
 
         return meetingRepository.save(meeting);
     }
