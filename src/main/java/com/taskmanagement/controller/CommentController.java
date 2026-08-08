@@ -16,14 +16,57 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/comments")
+@RequestMapping("/api/comments") // ✅ With /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
 public class CommentController {
 
     private final CommentService commentService;
-    private final UserService userService; // ✅ ADD THIS
+    private final UserService userService;
+
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
+    public ResponseEntity<?> getAllComments(Authentication auth) {
+        try {
+            Long userId = getUserIdFromAuth(auth);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+            List<Comment> comments = commentService.getAllComments();
+            return ResponseEntity.ok(comments);
+        } catch (Exception e) {
+            log.error("❌ Error getting comments: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch comments: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
+    public ResponseEntity<?> getCommentById(@PathVariable Long id) {
+        try {
+            Comment comment = commentService.getCommentById(id);
+            return ResponseEntity.ok(comment);
+        } catch (Exception e) {
+            log.error("❌ Comment not found: {}", id);
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/task/{taskId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
+    public ResponseEntity<?> getCommentsByTask(@PathVariable Long taskId) {
+        try {
+            List<Comment> comments = commentService.getCommentsByTask(taskId);
+            return ResponseEntity.ok(comments);
+        } catch (Exception e) {
+            log.error("❌ Error getting comments: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch comments: " + e.getMessage()));
+        }
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
@@ -46,44 +89,6 @@ public class CommentController {
         }
     }
 
-    @GetMapping("/task/{taskId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
-    public ResponseEntity<?> getCommentsByTask(@PathVariable Long taskId) {
-        try {
-            List<Comment> comments = commentService.getCommentsByTask(taskId);
-            return ResponseEntity.ok(comments);
-        } catch (Exception e) {
-            log.error("❌ Error getting comments: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch comments: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
-    public ResponseEntity<?> getCommentsByUser(@PathVariable Long userId) {
-        try {
-            List<Comment> comments = commentService.getCommentsByUser(userId);
-            return ResponseEntity.ok(comments);
-        } catch (Exception e) {
-            log.error("❌ Error getting comments: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to fetch comments: " + e.getMessage()));
-        }
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
-    public ResponseEntity<?> getCommentById(@PathVariable Long id) {
-        try {
-            Comment comment = commentService.getCommentById(id);
-            return ResponseEntity.ok(comment);
-        } catch (Exception e) {
-            log.error("❌ Comment not found: {}", id);
-            return ResponseEntity.notFound().build();
-        }
-    }
-
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> updateComment(@PathVariable Long id, @RequestBody Map<String, String> request,
@@ -95,7 +100,6 @@ public class CommentController {
                         .body(Map.of("error", "User not authenticated"));
             }
 
-            // Check if user owns the comment
             Comment existingComment = commentService.getCommentById(id);
             if (!existingComment.getUser().getId().equals(userId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -121,7 +125,6 @@ public class CommentController {
                         .body(Map.of("error", "User not authenticated"));
             }
 
-            // Check if user owns the comment or is admin
             Comment existingComment = commentService.getCommentById(id);
             boolean isAdmin = auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));

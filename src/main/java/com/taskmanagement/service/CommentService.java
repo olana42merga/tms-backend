@@ -26,6 +26,12 @@ public class CommentService {
     private final NotificationService notificationService;
     private final EmailService emailService;
 
+    // ✅ NEW: Get all comments (used in CommentController)
+    public List<Comment> getAllComments() {
+        log.info("📋 Getting all comments");
+        return commentRepository.findAll();
+    }
+
     @Transactional
     public Comment createComment(Long taskId, Long userId, String content) {
         log.info("📝 Creating comment for task: {}", taskId);

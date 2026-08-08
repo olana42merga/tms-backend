@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/test-email") // ✅ REMOVED /api
+@RequestMapping("/api/test-email") // ✅ Added /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")

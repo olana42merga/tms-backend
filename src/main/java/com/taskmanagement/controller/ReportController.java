@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/reports")
+@RequestMapping("/api/reports") // ✅ Added /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
 public class ReportController {
 
     private final ReportService reportService;
-    private final UserService userService; // ✅ ADDED
+    private final UserService userService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
@@ -166,7 +166,6 @@ public class ReportController {
         }
     }
 
-    // ✅ Helper method to get userId from Authentication
     private Long getUserIdFromAuth(Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
             log.warn("⚠️ No authentication found");

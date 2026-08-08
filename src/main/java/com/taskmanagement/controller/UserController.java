@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api/users") // ✅ Added /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -27,7 +27,6 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
 
-    // ✅ GET ALL USERS - Allow ADMIN and MANAGER
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getAllUsers() {
@@ -43,7 +42,6 @@ public class UserController {
         }
     }
 
-    // ✅ GET USER BY ID - Allow ADMIN and MANAGER
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
@@ -64,7 +62,6 @@ public class UserController {
         }
     }
 
-    // ✅ CREATE USER - Admin only
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createUser(@Valid @RequestBody RegisterRequest request) {
@@ -76,21 +73,18 @@ public class UserController {
         log.info("========================================");
 
         try {
-            // Check if username exists
             if (userRepository.existsByUsername(request.getUsername())) {
                 log.warn("❌ Username already exists: {}", request.getUsername());
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Username already exists"));
             }
 
-            // Check if email exists
             if (userRepository.existsByEmail(request.getEmail())) {
                 log.warn("❌ Email already exists: {}", request.getEmail());
                 return ResponseEntity.badRequest()
                         .body(Map.of("error", "Email already exists"));
             }
 
-            // ✅ Validate role
             String roleStr = request.getRole();
             if (roleStr == null || roleStr.trim().isEmpty()) {
                 log.warn("⚠️ No role provided, defaulting to WORKER");
@@ -123,7 +117,6 @@ public class UserController {
         }
     }
 
-    // ✅ UPDATE USER - Admin only
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody RegisterRequest request) {
@@ -145,7 +138,6 @@ public class UserController {
         }
     }
 
-    // ✅ DELETE USER - Admin only
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
@@ -159,7 +151,6 @@ public class UserController {
         }
     }
 
-    // ✅ TOGGLE USER STATUS - Admin only
     @PatchMapping("/{id}/toggle-status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {

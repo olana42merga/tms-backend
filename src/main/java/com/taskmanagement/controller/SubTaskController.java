@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/subtasks")
+@RequestMapping("/api/subtasks")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -33,7 +33,7 @@ public class SubTaskController {
 
     @PostConstruct
     public void init() {
-        log.info("🚀🚀🚀 SubTaskController IS LOADED! 🚀🚀🚀");
+        log.info("🚀 SubTaskController IS LOADED!");
     }
 
     @GetMapping("/ping")
@@ -42,7 +42,21 @@ public class SubTaskController {
         return ResponseEntity.ok("SubTask controller is alive!");
     }
 
-    // ✅ SPECIFIC MAPPINGS FIRST (before /{id})
+    // ✅ GET ALL SUBTASKS - This handles /api/subtasks
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
+    public ResponseEntity<?> getAllSubTasks() {
+        try {
+            log.info("📋 Getting all sub-tasks");
+            List<SubTask> subTasks = subTaskService.getAllSubTasks();
+            return ResponseEntity.ok(subTasks);
+        } catch (Exception e) {
+            log.error("❌ Error getting sub-tasks: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch sub-tasks: " + e.getMessage()));
+        }
+    }
+
     @GetMapping("/my-subtasks")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> getMySubTasks(Authentication auth) {
@@ -114,7 +128,6 @@ public class SubTaskController {
         }
     }
 
-    // ✅ GENERIC /{id} MAPPING LAST
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> getSubTaskById(@PathVariable Long id, Authentication auth) {
@@ -149,7 +162,6 @@ public class SubTaskController {
         }
     }
 
-    // ✅ CREATE SUBTASK
     @PostMapping
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> createSubTask(@RequestBody SubTaskRequest request, Authentication auth) {
@@ -185,7 +197,6 @@ public class SubTaskController {
         }
     }
 
-    // ✅ UPDATE SUBTASK
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> updateSubTask(@PathVariable Long id, @RequestBody SubTaskRequest request,
@@ -222,7 +233,6 @@ public class SubTaskController {
         }
     }
 
-    // ✅ UPDATE SUBTASK STATUS
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> updateSubTaskStatus(@PathVariable Long id, @RequestBody Map<String, String> request,
@@ -261,7 +271,6 @@ public class SubTaskController {
         }
     }
 
-    // ✅ DELETE SUBTASK
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> deleteSubTask(@PathVariable Long id, Authentication auth) {

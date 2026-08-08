@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/meetings")
+@RequestMapping("/api/meetings") // ✅ Added /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -28,18 +28,18 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> createMeeting(@RequestBody MeetingRequest request, Authentication auth) {
         try {
-            log.info("?? Creating meeting: {}", request.getTitle());
+            log.info("📝 Creating meeting: {}", request.getTitle());
             Long userId = getUserIdFromAuth(auth);
             if (userId == null) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "User not authenticated"));
             }
-            log.info("?? Created by user ID: {}", userId);
+            log.info("👤 Created by user ID: {}", userId);
 
             var meeting = meetingService.createMeeting(request, userId);
             return ResponseEntity.status(HttpStatus.CREATED).body(meeting);
         } catch (Exception e) {
-            log.error("? Error creating meeting: {}", e.getMessage());
+            log.error("❌ Error creating meeting: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -48,11 +48,11 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getAllMeetings() {
         try {
-            log.info("?? Getting all meetings");
+            log.info("📋 Getting all meetings");
             var meetings = meetingService.getAllMeetings();
             return ResponseEntity.ok(meetings);
         } catch (Exception e) {
-            log.error("? Error getting meetings: {}", e.getMessage());
+            log.error("❌ Error getting meetings: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -66,11 +66,11 @@ public class MeetingController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                         .body(Map.of("error", "User not authenticated"));
             }
-            log.info("?? Getting my meetings for user: {}", userId);
+            log.info("📋 Getting my meetings for user: {}", userId);
             var meetings = meetingService.getMeetingsForUser(userId);
             return ResponseEntity.ok(meetings);
         } catch (Exception e) {
-            log.error("? Error getting my meetings: {}", e.getMessage());
+            log.error("❌ Error getting my meetings: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -79,11 +79,11 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> getMeetingById(@PathVariable Long id) {
         try {
-            log.info("?? Getting meeting by ID: {}", id);
+            log.info("📋 Getting meeting by ID: {}", id);
             var meeting = meetingService.getMeetingById(id);
             return ResponseEntity.ok(meeting);
         } catch (Exception e) {
-            log.error("? Meeting not found: {}", id);
+            log.error("❌ Meeting not found: {}", id);
             return ResponseEntity.notFound().build();
         }
     }
@@ -92,11 +92,11 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getMeetingsForUser(@PathVariable Long userId) {
         try {
-            log.info("?? Getting meetings for user: {}", userId);
+            log.info("📋 Getting meetings for user: {}", userId);
             var meetings = meetingService.getMeetingsForUser(userId);
             return ResponseEntity.ok(meetings);
         } catch (Exception e) {
-            log.error("? Error getting meetings for user: {}", e.getMessage());
+            log.error("❌ Error getting meetings for user: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -105,11 +105,11 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> updateMeeting(@PathVariable Long id, @RequestBody MeetingRequest request) {
         try {
-            log.info("?? Updating meeting: {}", id);
+            log.info("✏️ Updating meeting: {}", id);
             var meeting = meetingService.updateMeeting(id, request);
             return ResponseEntity.ok(meeting);
         } catch (Exception e) {
-            log.error("? Error updating meeting: {}", e.getMessage());
+            log.error("❌ Error updating meeting: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -118,11 +118,11 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> updateMeetingStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
         try {
-            log.info("?? Updating meeting status: {} -> {}", id, request.get("status"));
+            log.info("📝 Updating meeting status: {} -> {}", id, request.get("status"));
             var meeting = meetingService.updateMeetingStatus(id, request.get("status"));
             return ResponseEntity.ok(meeting);
         } catch (Exception e) {
-            log.error("? Error updating meeting status: {}", e.getMessage());
+            log.error("❌ Error updating meeting status: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -131,41 +131,40 @@ public class MeetingController {
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> deleteMeeting(@PathVariable Long id) {
         try {
-            log.info("??? Deleting meeting: {}", id);
+            log.info("🗑️ Deleting meeting: {}", id);
             meetingService.deleteMeeting(id);
             return ResponseEntity.ok(Map.of("message", "Meeting deleted successfully"));
         } catch (Exception e) {
-            log.error("? Error deleting meeting: {}", e.getMessage());
+            log.error("❌ Error deleting meeting: {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // ? Helper method to get userId from Authentication
     private Long getUserIdFromAuth(Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
-            log.warn("?? No authentication found");
+            log.warn("⚠️ No authentication found");
             return null;
         }
 
         try {
             String username = auth.getName();
-            log.info("?? Authenticated user: {}", username);
+            log.info("👤 Authenticated user: {}", username);
 
             if (username == null || username.isEmpty()) {
-                log.warn("?? Username is null or empty");
+                log.warn("⚠️ Username is null or empty");
                 return null;
             }
 
             User user = userService.findByUsername(username);
             if (user == null) {
-                log.error("? User not found: {}", username);
+                log.error("❌ User not found: {}", username);
                 return null;
             }
 
-            log.info("? Found user ID: {}", user.getId());
+            log.info("✅ Found user ID: {}", user.getId());
             return user.getId();
         } catch (Exception e) {
-            log.error("? Error getting userId from auth: {}", e.getMessage());
+            log.error("❌ Error getting userId from auth: {}", e.getMessage());
             return null;
         }
     }

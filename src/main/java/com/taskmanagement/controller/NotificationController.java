@@ -16,14 +16,14 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/notifications")
+@RequestMapping("/api/notifications") // ✅ Added /api
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final UserService userService; // ✅ ADD THIS
+    private final UserService userService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
