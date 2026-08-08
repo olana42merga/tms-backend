@@ -3,7 +3,7 @@ package com.taskmanagement.controller;
 import com.taskmanagement.dto.RegisterRequest;
 import com.taskmanagement.dto.UserResponse;
 import com.taskmanagement.entity.User;
-import com.taskmanagement.enums.Role; // ✅ IMPORT
+import com.taskmanagement.enums.Role;
 import com.taskmanagement.repository.UserRepository;
 import com.taskmanagement.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -27,8 +27,9 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
 
+    // ✅ GET ALL USERS - Allow ADMIN and MANAGER
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getAllUsers() {
         log.info("📋 GET /users - Fetching all users");
         try {
@@ -42,8 +43,9 @@ public class UserController {
         }
     }
 
+    // ✅ GET USER BY ID - Allow ADMIN and MANAGER
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
             var user = userService.findById(id);
@@ -62,6 +64,7 @@ public class UserController {
         }
     }
 
+    // ✅ CREATE USER - Admin only
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> createUser(@Valid @RequestBody RegisterRequest request) {
@@ -95,7 +98,7 @@ public class UserController {
             } else {
                 try {
                     String upperRole = roleStr.trim().toUpperCase();
-                    Role.valueOf(upperRole); // ✅ This is the line that was failing
+                    Role.valueOf(upperRole);
                     request.setRole(upperRole);
                     log.info("✅ Valid role: {}", upperRole);
                 } catch (IllegalArgumentException e) {
@@ -120,6 +123,7 @@ public class UserController {
         }
     }
 
+    // ✅ UPDATE USER - Admin only
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateUser(@PathVariable Long id, @RequestBody RegisterRequest request) {
@@ -141,6 +145,7 @@ public class UserController {
         }
     }
 
+    // ✅ DELETE USER - Admin only
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> deleteUser(@PathVariable Long id) {
@@ -154,6 +159,7 @@ public class UserController {
         }
     }
 
+    // ✅ TOGGLE USER STATUS - Admin only
     @PatchMapping("/{id}/toggle-status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> toggleUserStatus(@PathVariable Long id) {

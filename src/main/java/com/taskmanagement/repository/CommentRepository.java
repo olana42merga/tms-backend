@@ -12,11 +12,11 @@ import java.util.List;
 
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
-    
+
     List<Comment> findByTask(Task task);
-    
+
     List<Comment> findByUser(User user);
-    
+
     @Query("SELECT c FROM Comment c WHERE c.task.id = :taskId ORDER BY c.createdAt DESC")
     List<Comment> findByTaskId(@Param("taskId") Long taskId);
 }

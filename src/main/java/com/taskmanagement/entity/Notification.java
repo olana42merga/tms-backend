@@ -49,7 +49,9 @@ public class Notification {
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
-        if (isRead == null) isRead = false;
-        if (isEmailSent == null) isEmailSent = false;
+        if (isRead == null)
+            isRead = false;
+        if (isEmailSent == null)
+            isEmailSent = false;
     }
 }

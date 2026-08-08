@@ -16,11 +16,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/subtasks") // ✅ REMOVED /api from here
+@RequestMapping("/subtasks")
 @RequiredArgsConstructor
 @Slf4j
 @CrossOrigin(origins = "*")
@@ -41,44 +42,34 @@ public class SubTaskController {
         return ResponseEntity.ok("SubTask controller is alive!");
     }
 
-    @PostMapping
-    @PreAuthorize("hasRole('WORKER')")
-    public ResponseEntity<?> createSubTask(@RequestBody SubTaskRequest request, Authentication auth) {
-        try {
-            String username = auth.getName();
-            User currentUser = userService.findByUsername(username);
-
-            Task task = taskService.getTaskById(request.getTaskId());
-            if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(currentUser.getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "You can only create SubTasks for tasks assigned to you"));
-            }
-
-            log.info("📝 Worker {} creating sub-task: {}", currentUser.getUsername(), request.getTitle());
-            SubTask subTask = subTaskService.createSubTask(request, currentUser.getId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(subTask);
-
-        } catch (Exception e) {
-            log.error("❌ Error creating sub-task: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
-
-    @GetMapping
+    // ✅ SPECIFIC MAPPINGS FIRST (before /{id})
+    @GetMapping("/my-subtasks")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> getMySubTasks(Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             List<SubTask> subTasks = subTaskService.getSubTasksAssignedToUser(currentUser.getId());
-            log.info("📋 Worker {} viewing their {} sub-tasks", currentUser.getUsername(), subTasks.size());
+            if (subTasks == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
 
+            log.info("📋 Worker {} viewing their {} sub-tasks", currentUser.getUsername(), subTasks.size());
             return ResponseEntity.ok(subTasks);
 
         } catch (Exception e) {
-            log.error("❌ Error getting sub-tasks: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("❌ Error getting sub-tasks: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch sub-tasks: " + e.getMessage()));
         }
     }
 
@@ -87,9 +78,20 @@ public class SubTaskController {
     public ResponseEntity<?> getSubTasksByTask(@PathVariable Long taskId, Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             Task task = taskService.getTaskById(taskId);
+            if (task == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Task not found"));
+            }
 
             if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(currentUser.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -97,25 +99,41 @@ public class SubTaskController {
             }
 
             List<SubTask> subTasks = subTaskService.getSubTasksByTask(taskId);
+            if (subTasks == null) {
+                return ResponseEntity.ok(new ArrayList<>());
+            }
+
             log.info("📋 Worker {} viewing {} sub-tasks for task: {}",
                     currentUser.getUsername(), subTasks.size(), task.getTitle());
 
             return ResponseEntity.ok(subTasks);
 
         } catch (Exception e) {
-            log.error("❌ Error getting sub-tasks for task: {}", e.getMessage());
+            log.error("❌ Error getting sub-tasks for task: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
+    // ✅ GENERIC /{id} MAPPING LAST
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> getSubTaskById(@PathVariable Long id, Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             SubTask subTask = subTaskService.getSubTaskById(id);
+            if (subTask == null) {
+                return ResponseEntity.notFound().build();
+            }
 
             if (subTask.getAssignedTo() == null || !subTask.getAssignedTo().getId().equals(currentUser.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -131,15 +149,63 @@ public class SubTaskController {
         }
     }
 
+    // ✅ CREATE SUBTASK
+    @PostMapping
+    @PreAuthorize("hasRole('WORKER')")
+    public ResponseEntity<?> createSubTask(@RequestBody SubTaskRequest request, Authentication auth) {
+        try {
+            String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
+            User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
+
+            Task task = taskService.getTaskById(request.getTaskId());
+            if (task == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Task not found"));
+            }
+
+            if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(currentUser.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("error", "You can only create SubTasks for tasks assigned to you"));
+            }
+
+            log.info("📝 Worker {} creating sub-task: {}", currentUser.getUsername(), request.getTitle());
+            SubTask subTask = subTaskService.createSubTask(request, currentUser.getId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(subTask);
+
+        } catch (Exception e) {
+            log.error("❌ Error creating sub-task: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ✅ UPDATE SUBTASK
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> updateSubTask(@PathVariable Long id, @RequestBody SubTaskRequest request,
             Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             SubTask subTask = subTaskService.getSubTaskById(id);
+            if (subTask == null) {
+                return ResponseEntity.notFound().build();
+            }
 
             if (subTask.getAssignedTo() == null || !subTask.getAssignedTo().getId().equals(currentUser.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -151,20 +217,32 @@ public class SubTaskController {
             return ResponseEntity.ok(updatedSubTask);
 
         } catch (Exception e) {
-            log.error("❌ Error updating sub-task: {}", e.getMessage());
+            log.error("❌ Error updating sub-task: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
+    // ✅ UPDATE SUBTASK STATUS
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> updateSubTaskStatus(@PathVariable Long id, @RequestBody Map<String, String> request,
             Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             SubTask subTask = subTaskService.getSubTaskById(id);
+            if (subTask == null) {
+                return ResponseEntity.notFound().build();
+            }
 
             if (subTask.getAssignedTo() == null || !subTask.getAssignedTo().getId().equals(currentUser.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -178,19 +256,31 @@ public class SubTaskController {
             return ResponseEntity.ok(updatedSubTask);
 
         } catch (Exception e) {
-            log.error("❌ Error updating sub-task status: {}", e.getMessage());
+            log.error("❌ Error updating sub-task status: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
+    // ✅ DELETE SUBTASK
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('WORKER')")
     public ResponseEntity<?> deleteSubTask(@PathVariable Long id, Authentication auth) {
         try {
             String username = auth.getName();
+            if (username == null || username.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+
             User currentUser = userService.findByUsername(username);
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "User not found"));
+            }
 
             SubTask subTask = subTaskService.getSubTaskById(id);
+            if (subTask == null) {
+                return ResponseEntity.notFound().build();
+            }
 
             if (subTask.getAssignedTo() == null || !subTask.getAssignedTo().getId().equals(currentUser.getId())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -202,7 +292,7 @@ public class SubTaskController {
             return ResponseEntity.ok(Map.of("message", "SubTask deleted successfully"));
 
         } catch (Exception e) {
-            log.error("❌ Error deleting sub-task: {}", e.getMessage());
+            log.error("❌ Error deleting sub-task: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }

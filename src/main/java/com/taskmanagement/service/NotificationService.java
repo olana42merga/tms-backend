@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -19,42 +20,66 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     @Transactional
     public Notification createNotification(Long userId, String title, String message, String notificationType) {
-        log.info("📝 Creating notification for user: {}", userId);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-        Notification notification = Notification.builder()
-                .title(title)
-                .message(message)
-                .notificationType(notificationType)
-                .user(user)
-                .isRead(false)
-                .isEmailSent(false)
-                .build();
+        Notification notification = new Notification();
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setNotificationType(notificationType);
+        notification.setUser(user);
+        notification.setIsRead(false);
+        notification.setCreatedAt(LocalDateTime.now());
 
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        log.info("? Notification created for user: {}", userId);
+        return saved;
+    }
+
+    @Transactional
+    public void createNotificationsForUsers(List<Long> userIds, String title, String message, String type) {
+        List<Notification> notifications = new ArrayList<>();
+        for (Long userId : userIds) {
+            try {
+                User user = userRepository.findById(userId).orElse(null);
+                if (user != null) {
+                    Notification notification = new Notification();
+                    notification.setTitle(title);
+                    notification.setMessage(message);
+                    notification.setNotificationType(type);
+                    notification.setUser(user);
+                    notification.setIsRead(false);
+                    notification.setCreatedAt(LocalDateTime.now());
+                    notifications.add(notification);
+                }
+            } catch (Exception e) {
+                log.error("? Failed for user {}: {}", userId, e.getMessage());
+            }
+        }
+        if (!notifications.isEmpty()) {
+            notificationRepository.saveAll(notifications);
+            log.info("? {} notifications created", notifications.size());
+        }
     }
 
     public List<Notification> getNotificationsByUser(Long userId) {
-        log.info("📋 Getting notifications for user: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
         return notificationRepository.findByUserOrderByCreatedAtDesc(user);
     }
 
     public List<Notification> getUnreadNotifications(Long userId) {
-        log.info("📋 Getting unread notifications for user: {}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found: " + userId));
-        return notificationRepository.findByUserAndIsReadFalse(user);
+        return notificationRepository.findByUserAndIsReadFalseOrderByCreatedAtDesc(user);
     }
 
     public Long getUnreadCount(Long userId) {
-        return notificationRepository.countUnreadByUserId(userId);
+        return notificationRepository.countByUserIdAndIsReadFalse(userId);
     }
 
     public Notification getNotificationById(Long id) {
@@ -64,7 +89,6 @@ public class NotificationService {
 
     @Transactional
     public Notification markAsRead(Long id) {
-        log.info("📝 Marking notification as read: {}", id);
         Notification notification = getNotificationById(id);
         notification.setIsRead(true);
         notification.setReadAt(LocalDateTime.now());
@@ -73,18 +97,17 @@ public class NotificationService {
 
     @Transactional
     public void markAllAsRead(Long userId) {
-        log.info("📝 Marking all notifications as read for user: {}", userId);
-        List<Notification> unreadNotifications = getUnreadNotifications(userId);
-        unreadNotifications.forEach(n -> {
+        List<Notification> unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
+        for (Notification n : unread) {
             n.setIsRead(true);
             n.setReadAt(LocalDateTime.now());
-        });
-        notificationRepository.saveAll(unreadNotifications);
+        }
+        notificationRepository.saveAll(unread);
+        log.info("? {} notifications marked as read", unread.size());
     }
 
     @Transactional
     public void deleteNotification(Long id) {
-        log.info("🗑️ Deleting notification: {}", id);
         notificationRepository.deleteById(id);
     }
 }

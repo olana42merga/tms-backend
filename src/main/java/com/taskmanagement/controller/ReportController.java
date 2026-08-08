@@ -1,12 +1,14 @@
 package com.taskmanagement.controller;
 
 import com.taskmanagement.dto.ReportRequest;
-import com.taskmanagement.entity.Report;
+import com.taskmanagement.entity.User;
 import com.taskmanagement.service.ReportService;
+import com.taskmanagement.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,14 +22,18 @@ import java.util.Map;
 public class ReportController {
 
     private final ReportService reportService;
+    private final UserService userService; // ✅ ADDED
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> createReport(@RequestBody ReportRequest request, Authentication auth) {
         try {
             log.info("📝 Creating report: {}", request.getTitle());
-
-            // ✅ Get userId from authentication
             Long userId = getUserIdFromAuth(auth);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
             log.info("👤 Submitted by user ID: {}", userId);
 
             var report = reportService.createReport(request, userId);
@@ -39,11 +45,11 @@ public class ReportController {
     }
 
     @GetMapping
-    public ResponseEntity<?> getReports(Authentication auth) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    public ResponseEntity<?> getAllReports() {
         try {
-            Long userId = getUserIdFromAuth(auth);
-            log.info("📋 Getting reports for user: {}", userId);
-            var reports = reportService.getReportsByUser(userId);
+            log.info("📋 Getting all reports");
+            var reports = reportService.getAllReports();
             return ResponseEntity.ok(reports);
         } catch (Exception e) {
             log.error("❌ Error getting reports: {}", e.getMessage());
@@ -51,7 +57,26 @@ public class ReportController {
         }
     }
 
+    @GetMapping("/my-reports")
+    @PreAuthorize("hasAnyRole('WORKER')")
+    public ResponseEntity<?> getMyReports(Authentication auth) {
+        try {
+            Long userId = getUserIdFromAuth(auth);
+            if (userId == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(Map.of("error", "User not authenticated"));
+            }
+            log.info("📋 Getting my reports for user: {}", userId);
+            var reports = reportService.getReportsByUser(userId);
+            return ResponseEntity.ok(reports);
+        } catch (Exception e) {
+            log.error("❌ Error getting my reports: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> getReportById(@PathVariable Long id) {
         try {
             log.info("📋 Getting report by ID: {}", id);
@@ -64,6 +89,7 @@ public class ReportController {
     }
 
     @GetMapping("/task/{taskId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> getReportsByTask(@PathVariable Long taskId) {
         try {
             log.info("📋 Getting reports for task: {}", taskId);
@@ -76,6 +102,7 @@ public class ReportController {
     }
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getReportsByUser(@PathVariable Long userId) {
         try {
             log.info("📋 Getting reports submitted by user: {}", userId);
@@ -88,6 +115,7 @@ public class ReportController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'WORKER')")
     public ResponseEntity<?> updateReport(@PathVariable Long id, @RequestBody ReportRequest request) {
         try {
             log.info("✏️ Updating report: {}", id);
@@ -100,6 +128,7 @@ public class ReportController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> updateReportStatus(@PathVariable Long id, @RequestBody Map<String, String> request) {
         try {
             log.info("📝 Updating report status: {} -> {}", id, request.get("status"));
@@ -112,6 +141,7 @@ public class ReportController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> deleteReport(@PathVariable Long id) {
         try {
             log.info("🗑️ Deleting report: {}", id);
@@ -124,6 +154,7 @@ public class ReportController {
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     public ResponseEntity<?> getPendingReports() {
         try {
             log.info("📋 Getting pending reports");
@@ -138,19 +169,30 @@ public class ReportController {
     // ✅ Helper method to get userId from Authentication
     private Long getUserIdFromAuth(Authentication auth) {
         if (auth == null || auth.getPrincipal() == null) {
-            log.warn("⚠️ No authentication found, defaulting to user ID 9 (manager)");
-            return 9L; // Default to manager ID
+            log.warn("⚠️ No authentication found");
+            return null;
         }
 
         try {
             String username = auth.getName();
             log.info("👤 Authenticated user: {}", username);
-            // TODO: Find user by username and return ID
-            // For now, return default manager ID
-            return 9L;
+
+            if (username == null || username.isEmpty()) {
+                log.warn("⚠️ Username is null or empty");
+                return null;
+            }
+
+            User user = userService.findByUsername(username);
+            if (user == null) {
+                log.error("❌ User not found: {}", username);
+                return null;
+            }
+
+            log.info("✅ Found user ID: {}", user.getId());
+            return user.getId();
         } catch (Exception e) {
             log.error("❌ Error getting userId from auth: {}", e.getMessage());
-            return 9L;
+            return null;
         }
     }
 }

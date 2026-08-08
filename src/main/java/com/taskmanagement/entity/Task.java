@@ -1,5 +1,6 @@
 package com.taskmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.taskmanagement.enums.Priority;
 import com.taskmanagement.enums.TaskStatus;
 import lombok.AllArgsConstructor;
@@ -50,10 +51,12 @@ public class Task {
 
     @ManyToOne
     @JoinColumn(name = "assigned_to")
+    @JsonIgnore
     private User assignedTo;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @JsonIgnore
     private User createdBy;
 
     // ✅ REMOVED the problematic subTasks relationship

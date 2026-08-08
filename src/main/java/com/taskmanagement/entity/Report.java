@@ -1,5 +1,6 @@
 package com.taskmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.taskmanagement.enums.ReportStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -38,10 +39,12 @@ public class Report {
 
     @ManyToOne
     @JoinColumn(name = "task_id")
+    @JsonIgnore // ✅ ADD THIS
     private Task task;
 
     @ManyToOne
     @JoinColumn(name = "submitted_by")
+    @JsonIgnore // ✅ ADD THIS
     private User submittedBy;
 
     @Column(name = "submitted_at")
@@ -54,7 +57,8 @@ public class Report {
     protected void onCreate() {
         submittedAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null) status = ReportStatus.PENDING;
+        if (status == null)
+            status = ReportStatus.PENDING;
     }
 
     @PreUpdate

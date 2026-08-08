@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -24,7 +25,7 @@ public class SubTaskService {
     private final SubTaskRepository subTaskRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService; // ✅ Add EmailService
+    private final EmailService emailService;
 
     @Transactional
     public SubTask createSubTask(SubTaskRequest request, Long createdBy) {
@@ -51,6 +52,8 @@ public class SubTaskService {
 
         if (request.getProgress() != null) {
             subTask.setProgress(request.getProgress());
+        } else {
+            subTask.setProgress(0);
         }
 
         if (request.getPriority() != null) {
@@ -59,6 +62,8 @@ public class SubTaskService {
             } catch (IllegalArgumentException e) {
                 subTask.setPriority(Priority.MEDIUM);
             }
+        } else {
+            subTask.setPriority(Priority.MEDIUM);
         }
 
         if (request.getStatus() != null) {
@@ -67,6 +72,8 @@ public class SubTaskService {
             } catch (IllegalArgumentException e) {
                 subTask.setStatus(TaskStatus.NOT_STARTED);
             }
+        } else {
+            subTask.setStatus(TaskStatus.NOT_STARTED);
         }
 
         subTask.setDeadline(request.getDeadline());
@@ -74,7 +81,6 @@ public class SubTaskService {
         SubTask savedSubTask = subTaskRepository.save(subTask);
         log.info("✅ SubTask created with ID: {}", savedSubTask.getId());
 
-        // ✅ Send email notification
         if (assignedTo != null) {
             sendSubTaskCreatedEmail(savedSubTask, assignedTo);
         }
@@ -85,6 +91,11 @@ public class SubTaskService {
     // ✅ Send email when subtask is created
     private void sendSubTaskCreatedEmail(SubTask subTask, User assignedTo) {
         try {
+            if (assignedTo == null || assignedTo.getEmail() == null) {
+                log.warn("⚠️ Cannot send email: assignedTo or email is null");
+                return;
+            }
+
             String subject = "SubTask Created: " + subTask.getTitle();
             String body = "Hello " + assignedTo.getName() + ",\n\n" +
                     "A new subtask has been created for you:\n" +
@@ -102,26 +113,71 @@ public class SubTaskService {
         }
     }
 
+    // ✅ GET ALL SUBTASKS
     public List<SubTask> getAllSubTasks() {
         log.info("📋 Getting all sub-tasks");
-        return subTaskRepository.findAll();
+        try {
+            List<SubTask> subTasks = subTaskRepository.findAll();
+            if (subTasks == null) {
+                return new ArrayList<>();
+            }
+            log.info("✅ Found {} sub-tasks", subTasks.size());
+            return subTasks;
+        } catch (Exception e) {
+            log.error("❌ Error getting all sub-tasks: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 
+    // ✅ GET SUBTASK BY ID
     public SubTask getSubTaskById(Long id) {
+        log.info("📋 Getting sub-task by ID: {}", id);
         return subTaskRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("SubTask not found: " + id));
     }
 
+    // ✅ GET SUBTASKS BY TASK
     public List<SubTask> getSubTasksByTask(Long taskId) {
         log.info("📋 Getting sub-tasks for task: {}", taskId);
-        return subTaskRepository.findByTaskId(taskId);
+        try {
+            if (taskId == null) {
+                log.warn("⚠️ TaskId is null");
+                return new ArrayList<>();
+            }
+            List<SubTask> subTasks = subTaskRepository.findByTaskId(taskId);
+            if (subTasks == null) {
+                return new ArrayList<>();
+            }
+            log.info("✅ Found {} sub-tasks for task {}", subTasks.size(), taskId);
+            return subTasks;
+        } catch (Exception e) {
+            log.error("❌ Error getting sub-tasks for task: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 
+    // ✅ GET SUBTASKS ASSIGNED TO USER
     public List<SubTask> getSubTasksAssignedToUser(Long userId) {
         log.info("📋 Getting sub-tasks assigned to user: {}", userId);
-        return subTaskRepository.findByAssignedToUserId(userId);
+        try {
+            if (userId == null) {
+                log.warn("⚠️ UserId is null");
+                return new ArrayList<>();
+            }
+            List<SubTask> subTasks = subTaskRepository.findByAssignedToUserId(userId);
+            if (subTasks == null) {
+                log.info("📋 No sub-tasks found for user {}", userId);
+                return new ArrayList<>();
+            }
+            log.info("✅ Found {} sub-tasks for user {}", subTasks.size(), userId);
+            return subTasks;
+        } catch (Exception e) {
+            log.error("❌ Error getting sub-tasks assigned to user: {}", e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 
+    // ✅ UPDATE SUBTASK
     @Transactional
     public SubTask updateSubTask(Long id, SubTaskRequest request) {
         log.info("✏️ Updating sub-task: {}", id);
@@ -162,6 +218,7 @@ public class SubTaskService {
         return subTaskRepository.save(subTask);
     }
 
+    // ✅ UPDATE SUBTASK STATUS
     @Transactional
     public SubTask updateSubTaskStatus(Long id, String status) {
         log.info("📝 Updating sub-task status: {} -> {}", id, status);
@@ -173,7 +230,6 @@ public class SubTaskService {
         }
         SubTask updatedSubTask = subTaskRepository.save(subTask);
 
-        // ✅ Send email when subtask is completed
         if (subTask.getStatus() == TaskStatus.COMPLETED && subTask.getAssignedTo() != null) {
             sendSubTaskCompletedEmail(updatedSubTask);
         }
@@ -184,7 +240,7 @@ public class SubTaskService {
     // ✅ Send email when subtask is completed
     private void sendSubTaskCompletedEmail(SubTask subTask) {
         try {
-            if (subTask.getAssignedTo() != null) {
+            if (subTask.getAssignedTo() != null && subTask.getAssignedTo().getEmail() != null) {
                 String subject = "SubTask Completed: " + subTask.getTitle();
                 String body = "Hello " + subTask.getAssignedTo().getName() + ",\n\n" +
                         "A subtask has been completed:\n" +
@@ -201,9 +257,11 @@ public class SubTaskService {
         }
     }
 
+    // ✅ DELETE SUBTASK
     @Transactional
     public void deleteSubTask(Long id) {
         log.info("🗑️ Deleting sub-task: {}", id);
         subTaskRepository.deleteById(id);
+        log.info("✅ SubTask deleted: {}", id);
     }
 }

@@ -23,11 +23,13 @@ C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\SubTa
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\ReportRequest.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\config\JwtAuthenticationFilter.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\TaskController.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\PasswordResetToken.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\TmsApplication.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\config\DataLoader.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\SubTaskController.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\SubTask.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\MeetingRequest.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\config\CorsConfig.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\repository\TaskRepository.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\config\JwtUtil.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\enums\Priority.java
@@ -36,6 +38,7 @@ C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\Commen
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\EmailLogService.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\EmailService.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\AuthRequest.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\repository\PasswordResetTokenRepository.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\controller\TestEmailController.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\entity\EmailLog.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\enums\Role.java
@@ -55,3 +58,4 @@ C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\repository\Em
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\dto\RegisterRequest.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\repository\ReportRepository.java
 C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\exception\ResourceNotFoundException.java
+C:\Users\olana\tmsproject\backend\src\main\java\com\taskmanagement\service\PasswordResetTokenService.java

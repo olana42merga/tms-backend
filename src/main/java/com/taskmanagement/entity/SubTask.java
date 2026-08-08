@@ -1,5 +1,6 @@
 package com.taskmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.taskmanagement.enums.Priority;
 import com.taskmanagement.enums.TaskStatus;
 import lombok.AllArgsConstructor;
@@ -43,14 +44,17 @@ public class SubTask {
 
     @ManyToOne
     @JoinColumn(name = "task_id", nullable = false)
+    @JsonIgnore // ✅ ADD THIS
     private Task task;
 
     @ManyToOne
     @JoinColumn(name = "assigned_to")
+    @JsonIgnore
     private User assignedTo;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @JsonIgnore
     private User createdBy;
 
     @Column(name = "created_at")

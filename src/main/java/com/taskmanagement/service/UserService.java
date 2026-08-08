@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,78 +21,53 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EmailService emailService; // ✅ Inject EmailService for notifications
+    private final EmailService emailService;
+    private final NotificationService notificationService;
 
+    @Transactional
     public User registerUser(RegisterRequest request) {
-        log.info("========================================");
-        log.info("📝 Registering user: {}", request.getUsername());
-        log.info("📝 Role from request: '{}'", request.getRole());
-        log.info("📝 Role is null? {}", request.getRole() == null);
-        log.info("📝 Role class: {}", request.getRole() != null ? request.getRole().getClass().getName() : "null");
-        log.info("========================================");
-
-        // ✅ FIX: Properly handle the role
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setName(request.getName() != null ? request.getName() : request.getUsername());
+        user.setPhone(request.getPhone());
+        
         Role role;
         String roleStr = request.getRole();
-
         if (roleStr == null || roleStr.trim().isEmpty()) {
-            log.warn("⚠️ No role provided, defaulting to WORKER");
             role = Role.WORKER;
         } else {
             try {
-                // Convert to uppercase and trim
-                String upperRole = roleStr.trim().toUpperCase();
-                log.info("🔄 Converting '{}' to '{}'", roleStr, upperRole);
-                role = Role.valueOf(upperRole);
-                log.info("✅ Successfully parsed role: {}", role);
+                role = Role.valueOf(roleStr.trim().toUpperCase());
             } catch (IllegalArgumentException e) {
-                log.error("❌ Invalid role value: '{}', defaulting to WORKER", roleStr);
                 role = Role.WORKER;
             }
         }
-
-        log.info("📝 Final role to save: {}", role);
-
-        User user = User.builder()
-                .username(request.getUsername())
-                .email(request.getEmail())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .name(request.getName() != null ? request.getName() : request.getUsername())
-                .phone(request.getPhone())
-                .role(role) // ✅ Use the parsed role
-                .isActive(true)
-                .build();
+        user.setRole(role);
+        user.setIsActive(true);
 
         User savedUser = userRepository.save(user);
-        log.info("✅ User saved with ID: {} and role: {}", savedUser.getId(), savedUser.getRole());
-        log.info("========================================");
+        log.info("? User saved with ID: {}", savedUser.getId());
 
-        // ✅ Send welcome email to the new user
         sendWelcomeEmail(savedUser, request.getPassword());
 
         return savedUser;
     }
 
-    // ✅ Send welcome email to new user
     private void sendWelcomeEmail(User user, String plainPassword) {
         try {
             String subject = "Welcome to Task Management System!";
             String body = "Hello " + user.getName() + ",\n\n" +
                     "Your account has been created successfully.\n\n" +
-                    "📋 Account Details:\n" +
-                    "   Username: " + user.getUsername() + "\n" +
-                    "   Email: " + user.getEmail() + "\n" +
-                    "   Role: " + user.getRole().name() + "\n" +
-                    "   Password: " + plainPassword + "\n\n" +
-                    "Please login to access the system:\n" +
-                    "   Login URL: http://localhost:3000/login\n\n" +
-                    "Best regards,\n" +
-                    "TMS Team";
+                    "?? Username: " + user.getUsername() + "\n" +
+                    "?? Email: " + user.getEmail() + "\n" +
+                    "?? Password: " + plainPassword + "\n\n" +
+                    "Best regards,\nTMS Team";
 
             emailService.sendEmail(user.getEmail(), subject, body);
-            log.info("✅ Welcome email sent to: {}", user.getEmail());
         } catch (Exception e) {
-            log.error("❌ Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+            log.error("? Failed to send welcome email: {}", e.getMessage());
         }
     }
 
@@ -110,12 +86,24 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found: " + id));
     }
 
+    public List<User> findAllUsers() {
+        return userRepository.findAll();
+    }
+
     public List<UserResponse> getAllUsers() {
-        log.info("📋 Fetching all users");
         List<User> users = userRepository.findAll();
         return users.stream()
                 .map(this::convertToUserResponse)
                 .collect(Collectors.toList());
+    }
+
+    public List<User> findUsersByRole(String role) {
+        try {
+            Role roleEnum = Role.valueOf(role.toUpperCase());
+            return userRepository.findByRole(roleEnum);
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
     }
 
     private UserResponse convertToUserResponse(User user) {
@@ -130,49 +118,47 @@ public class UserService {
                 .build();
     }
 
+    @Transactional
     public User updateUser(Long id, RegisterRequest request) {
-        log.info("========================================");
-        log.info("✏️ Updating user ID: {}", id);
-        log.info("📝 New role from request: '{}'", request.getRole());
-
         User user = findById(id);
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setName(request.getName());
         user.setPhone(request.getPhone());
 
-        // ✅ FIX: Update role if provided
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             try {
-                String upperRole = request.getRole().trim().toUpperCase();
-                Role newRole = Role.valueOf(upperRole);
-                user.setRole(newRole);
-                log.info("✅ Updated role to: {}", newRole);
+                user.setRole(Role.valueOf(request.getRole().trim().toUpperCase()));
             } catch (IllegalArgumentException e) {
-                log.error("❌ Invalid role: {}, keeping existing role", request.getRole());
+                // Keep existing role
             }
-        } else {
-            log.warn("⚠️ No role provided in update request, keeping existing role: {}", user.getRole());
         }
 
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        User updatedUser = userRepository.save(user);
-        log.info("✅ User updated with role: {}", updatedUser.getRole());
-        log.info("========================================");
-        return updatedUser;
+        return userRepository.save(user);
     }
 
+    @Transactional
     public void deleteUser(Long id) {
-        log.info("🗑️ Deleting user: {}", id);
         userRepository.deleteById(id);
     }
 
+    @Transactional
     public User toggleUserStatus(Long id) {
         User user = findById(id);
         user.setIsActive(!user.getIsActive());
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public void updateUserPassword(User user) {
+        if (user == null) {
+            throw new RuntimeException("User cannot be null");
+        }
+        userRepository.save(user);
+        log.info("? Password updated for user: {}", user.getUsername());
     }
 }

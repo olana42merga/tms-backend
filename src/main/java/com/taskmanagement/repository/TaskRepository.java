@@ -12,7 +12,10 @@ import java.util.List;
 @Repository
 public interface TaskRepository extends JpaRepository<Task, Long> {
     List<Task> findByAssignedTo(User user);
+
     List<Task> findByAssignedToAndStatus(User user, TaskStatus status);
+
     List<Task> findByDeadlineBeforeAndStatusNot(LocalDateTime deadline, TaskStatus status);
+
     List<Task> findByCreatedBy(User user);
 }

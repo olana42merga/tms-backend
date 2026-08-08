@@ -1,4 +1,4 @@
-﻿import os
+﻿﻿import os
 import sys
 
 def remove_bom_from_file(filepath):

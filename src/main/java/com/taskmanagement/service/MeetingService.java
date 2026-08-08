@@ -27,7 +27,7 @@ public class MeetingService {
     @Transactional
     public Meeting createMeeting(MeetingRequest request, Long createdBy) {
         log.info("📝 Creating meeting: {}", request.getTitle());
-        log.info("👤 Created by user ID: {}", createdBy);
+        // log.info("");
 
         User creator = userService.findById(createdBy);
 
@@ -87,29 +87,29 @@ public class MeetingService {
     }
 
     public List<Meeting> getAllMeetings() {
-        log.info("📋 Getting all meetings");
+        // log.info("");
         return meetingRepository.findAll();
     }
 
     public List<Meeting> getMeetingsForUser(Long userId) {
-        log.info("📋 Getting meetings for user: {}", userId);
+        // log.info("");
         return meetingRepository.findByParticipantsContaining(String.valueOf(userId));
     }
 
     public List<Meeting> getMeetingsByDate(LocalDate date) {
-        log.info("📋 Getting meetings by date: {}", date);
+        // log.info("");
         return meetingRepository.findByMeetingDate(date);
     }
 
     public Meeting getMeetingById(Long id) {
-        log.info("📋 Getting meeting by ID: {}", id);
+        // log.info("");
         return meetingRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Meeting not found with id: " + id));
     }
 
     @Transactional
     public Meeting updateMeeting(Long id, MeetingRequest request) {
-        log.info("✏️ Updating meeting: {}", id);
+        // log.info("");
         Meeting meeting = getMeetingById(id);
 
         if (request.getTitle() != null)
@@ -139,7 +139,7 @@ public class MeetingService {
 
     @Transactional
     public Meeting updateMeetingStatus(Long id, String status) {
-        log.info("📝 Updating meeting status: {} -> {}", id, status);
+        // log.info("");
         Meeting meeting = getMeetingById(id);
         meeting.setStatus(status);
         return meetingRepository.save(meeting);
@@ -147,7 +147,7 @@ public class MeetingService {
 
     @Transactional
     public void deleteMeeting(Long id) {
-        log.info("🗑️ Deleting meeting: {}", id);
+        // log.info("");
         Meeting meeting = getMeetingById(id);
         meetingRepository.delete(meeting);
         log.info("✅ Meeting deleted: {}", meeting.getTitle());

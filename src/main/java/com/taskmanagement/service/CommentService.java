@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -21,7 +23,8 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
-    private final EmailService emailService; // ✅ Add EmailService
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     @Transactional
     public Comment createComment(Long taskId, Long userId, String content) {
@@ -37,33 +40,73 @@ public class CommentService {
         comment.setContent(content);
         comment.setTask(task);
         comment.setUser(user);
+        comment.setCreatedAt(LocalDateTime.now());
 
         Comment savedComment = commentRepository.save(comment);
         log.info("✅ Comment created with ID: {}", savedComment.getId());
 
-        // ✅ Send email notification to task owner
-        sendCommentAddedEmail(task, user, content);
+        // ✅ Send notifications to all relevant users
+        sendCommentNotifications(task, user, content);
 
         return savedComment;
     }
 
-    // ✅ Send email when comment is added
-    private void sendCommentAddedEmail(Task task, User commenter, String content) {
+    private void sendCommentNotifications(Task task, User commenter, String content) {
         try {
+            List<Long> userIds = new ArrayList<>();
+
+            // 1. Notify assigned user
             if (task.getAssignedTo() != null && !task.getAssignedTo().getId().equals(commenter.getId())) {
+                userIds.add(task.getAssignedTo().getId());
+                sendCommentEmail(task.getAssignedTo(), task, commenter, content);
+            }
+
+            // 2. Notify creator
+            if (task.getCreatedBy() != null && !task.getCreatedBy().getId().equals(commenter.getId())) {
+                if (task.getAssignedTo() == null || !task.getAssignedTo().getId().equals(task.getCreatedBy().getId())) {
+                    userIds.add(task.getCreatedBy().getId());
+                    sendCommentEmail(task.getCreatedBy(), task, commenter, content);
+                }
+            }
+
+            // 3. Notify all previous commenters
+            List<Comment> existingComments = commentRepository.findByTaskId(task.getId());
+            for (Comment c : existingComments) {
+                Long cId = c.getUser().getId();
+                if (!cId.equals(commenter.getId()) && !userIds.contains(cId)) {
+                    userIds.add(cId);
+                    sendCommentEmail(c.getUser(), task, commenter, content);
+                }
+            }
+
+            // 4. Create in-app notifications
+            if (!userIds.isEmpty()) {
+                String title = "💬 New Comment on: " + task.getTitle();
+                String message = commenter.getName() + ": "
+                        + (content.length() > 50 ? content.substring(0, 50) + "..." : content);
+                notificationService.createNotificationsForUsers(userIds, title, message, "COMMENT");
+                log.info("✅ Notifications sent to {} users", userIds.size());
+            }
+        } catch (Exception e) {
+            log.error("❌ Failed to send comment notifications: {}", e.getMessage());
+        }
+    }
+
+    private void sendCommentEmail(User recipient, Task task, User commenter, String content) {
+        try {
+            if (recipient != null && recipient.getEmail() != null && !recipient.getEmail().isEmpty()) {
                 String subject = "New Comment on Task: " + task.getTitle();
-                String body = "Hello " + task.getAssignedTo().getName() + ",\n\n" +
+                String body = "Hello " + recipient.getName() + ",\n\n" +
                         "A new comment has been added to your task:\n" +
                         "📋 Task: " + task.getTitle() + "\n" +
                         "💬 Comment: " + content + "\n" +
                         "👤 By: " + commenter.getName() + "\n\n" +
                         "Best regards,\nTMS Team";
-
-                emailService.sendEmail(task.getAssignedTo().getEmail(), subject, body);
-                log.info("✅ Comment notification email sent to: {}", task.getAssignedTo().getEmail());
+                emailService.sendEmail(recipient.getEmail(), subject, body);
+                log.info("✅ Comment email sent to: {}", recipient.getEmail());
             }
         } catch (Exception e) {
-            log.error("❌ Failed to send comment notification email: {}", e.getMessage());
+            log.error("❌ Failed to send email: {}", e.getMessage());
         }
     }
 
@@ -89,6 +132,7 @@ public class CommentService {
         log.info("✏️ Updating comment: {}", id);
         Comment comment = getCommentById(id);
         comment.setContent(content);
+        comment.setUpdatedAt(LocalDateTime.now());
         return commentRepository.save(comment);
     }
 

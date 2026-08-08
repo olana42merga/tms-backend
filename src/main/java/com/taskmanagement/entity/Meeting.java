@@ -1,9 +1,13 @@
 package com.taskmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.time.LocalDate;
@@ -16,6 +20,7 @@ import java.time.LocalTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EntityListeners(AuditingEntityListener.class)
 public class Meeting {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +41,7 @@ public class Meeting {
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
-    @Column(name = "end_time")
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
     private String location;
@@ -44,30 +49,28 @@ public class Meeting {
     @Column(name = "meeting_link")
     private String meetingLink;
 
-    private String status;
-
-    @Column(name = "participants")
+    @Column(columnDefinition = "TEXT")
     private String participants;
+
+    private String status;
 
     @ManyToOne
     @JoinColumn(name = "created_by")
+    @JsonIgnore
     private User createdBy;
 
-    @Column(name = "created_at")
+    @CreatedDate
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @LastModifiedDate
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (status == null) status = "SCHEDULED";
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        if (status == null) {
+            status = "SCHEDULED";
+        }
     }
 }

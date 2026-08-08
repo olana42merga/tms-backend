@@ -11,6 +11,8 @@ import java.util.List;
 @Repository
 public interface ReportRepository extends JpaRepository<Report, Long> {
     List<Report> findBySubmittedBy(User user);
+
     List<Report> findByTaskId(Long taskId);
+
     List<Report> findByStatus(ReportStatus status);
 }

@@ -1,5 +1,6 @@
 package com.taskmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.taskmanagement.enums.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -51,16 +52,40 @@ public class User {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "assignedTo", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Task> tasks = new ArrayList<>();
 
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Task> createdTasks = new ArrayList<>();
+
     @OneToMany(mappedBy = "submittedBy", cascade = CascadeType.ALL)
+    @JsonIgnore
     private List<Report> reports = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Notification> notifications = new ArrayList<>();
+
+    @OneToMany(mappedBy = "assignedTo", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<SubTask> subTasks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "createdBy", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<SubTask> createdSubTasks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Comment> comments = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (isActive == null) isActive = true;
+        if (isActive == null) {
+            isActive = true;
+        }
     }
 
     @PreUpdate
