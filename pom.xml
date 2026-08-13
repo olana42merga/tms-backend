@@ -156,6 +156,15 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+            <!-- ✅ ADD THIS PLUGIN TO RUN PASSWORD GENERATOR -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.taskmanagement.PasswordGenerator</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
