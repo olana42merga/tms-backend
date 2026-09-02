@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,6 +30,34 @@ public class UserService {
 
     @Value("${app.frontend.url}")
     private String frontendUrl;
+
+    // ============================================================
+    // ✅ GET RECIPIENTS (using findByRole)
+    // ============================================================
+    public List<UserResponse> getRecipients() {
+        try {
+            // Get STAFF users
+            List<User> staffUsers = userRepository.findByRole(Role.STAFF);
+
+            // Get TEAMLEADER users
+            List<User> teamLeaderUsers = userRepository.findByRole(Role.TEAMLEADER);
+
+            // Combine both lists
+            List<User> allRecipients = new ArrayList<>();
+            allRecipients.addAll(staffUsers);
+            allRecipients.addAll(teamLeaderUsers);
+
+            log.info("📋 Found {} recipients ({} STAFF, {} TEAMLEADER)",
+                    allRecipients.size(), staffUsers.size(), teamLeaderUsers.size());
+
+            return allRecipients.stream()
+                    .map(this::convertToUserResponse)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("❌ Error fetching recipients: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to fetch recipients", e);
+        }
+    }
 
     @Transactional
     public User registerUser(RegisterRequest request) {

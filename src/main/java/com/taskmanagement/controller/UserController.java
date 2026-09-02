@@ -31,6 +31,22 @@ public class UserController {
     private final UserService userService;
     private final UserRepository userRepository;
 
+    // ✅ NEW: GET recipients (for dropdowns)
+    @GetMapping("/recipients")
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'TEAMLEADER', 'STAFF')")
+    public ResponseEntity<?> getRecipients() {
+        log.info("📋 GET /users/recipients - Fetching recipients");
+        try {
+            List<UserResponse> recipients = userService.getRecipients();
+            log.info("✅ Found {} recipients", recipients.size());
+            return ResponseEntity.ok(recipients);
+        } catch (Exception e) {
+            log.error("❌ Error fetching recipients: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to fetch recipients: " + e.getMessage()));
+        }
+    }
+
     // ✅ GET current user profile
     @GetMapping("/me")
     public ResponseEntity<?> getCurrentUser(Authentication auth) {
